@@ -1,0 +1,327 @@
+<?php
+
+require_once "classes/RecipesLoader.class.php";
+require_once "classes/Recipe.class.php";
+
+use \ProcessWireRecipes\RecipesLoader;
+use \ProcessWireRecipes\Recipe;
+
+class ProcessRecipeInstaller extends Process implements Module {
+
+    const PAGE_NAME = 'recipe-installer';
+    const PAGE_TITLE = 'Recipe Installer';
+
+    const ACTION_NAME_INSTALL = 'install';
+    const ACTION_NAME_UNINSTALL = 'uninstall';
+
+    protected $templateStructure;
+    protected $actions = array(
+        self::ACTION_NAME_INSTALL => '(Re)install',
+        self::ACTION_NAME_UNINSTALL => 'Uninstall',
+    );
+
+    protected $fullRecipesPath = null;
+
+
+
+    public function __construct() {}
+
+
+
+    public function init() {
+        parent::init();
+        $this->modules->get('JqueryWireTabs');
+
+        $this->fullRecipesPath = $this->config->paths->site . $this->recipesPath;
+
+        $this->templateStructure = array(
+            'recipe' => array(
+                'parent' => $this->recipesParent,
+                'fieldNames' => array(
+                      'title',
+                      'version',
+                      'authors',
+                      'problem',
+                      'solution',
+                      'tags',
+                      'resources',
+                ),
+            ),
+            'recipe-author' => array(
+                'parent' => $this->authorsParent,
+                'fieldNames' => array(
+                    'title',
+                    'githubLink',
+                    'forumLink',
+                ),
+            ),
+            'recipe-tag' => array(
+                'parent' => $this->tagsParent,
+                'fieldNames' => array(
+                    'title'
+                ),
+            ),
+        );
+    }
+
+
+
+    public function ___install() {
+        parent::___install();
+        $page = $this->pages->get('template=admin, name=' . self::PAGE_NAME);
+        if (!$page->id) {
+            $page = new Page();
+            $page->template = 'admin';
+            $page->parent = $this->pages->get($this->config->adminRootPageID)->child('name=setup');
+            $page->title = self::PAGE_TITLE;
+            $page->name = self::PAGE_NAME;
+            $page->process = $this;
+            $page->save();
+        }
+    }
+
+
+
+    public function ___uninstall() {
+        parent::___uninstall();
+        $page = $this->pages->get('template=admin, name=' . self::PAGE_NAME);
+        if ($page->id) $page->delete();
+    }
+
+
+
+    public function ___executeExecute() {
+        // either 'install' or 'uninstall'
+        $action = $this->input->post->recipeInstallerAction;
+
+
+        if (!array_key_exists($action, $this->actions)) {
+            $this->session->error("invalid action");
+            $this->session->redirect("../");
+        } else {
+            $actionLabel = $this->actions[$action];
+        }
+
+        $recipes = RecipesLoader::loadPath($this->fullRecipesPath)->recipes;
+
+        if (isset($this->input->post->recipes)) {
+            foreach ($this->input->post->recipes as $recipeName) {
+                $error = false;
+                $recipe = $recipes[$recipeName];
+
+                try {
+
+                    if ($action === self::ACTION_NAME_INSTALL) {
+                        $recipe->install();
+                    } else if ($action === self::ACTION_NAME_UNINSTALL) {
+                        $recipe->uninstall();
+                    }
+
+                } catch (Exception $e) {
+                    $error = true;
+                    $this->session->error("something wrong with recipe '{$recipe->title}'");
+                    $this->session->error($e);
+                }
+                if (!$error) {
+                    $this->session->message("{$actionLabel}ed recipe '{$recipe->title}'");
+                }
+            }
+        } else {
+            $this->session->error("no recipes selected");
+            $this->session->redirect("../");
+        }
+
+        // move back to main page
+        $this->session->redirect("../");
+    }
+
+
+
+    /**
+     * main page
+     */
+    public function ___execute() {
+
+        if ($errors = $this->getErrors()) {
+            foreach ($errors as $error) {
+                $this->error($error);
+            }
+            return "<h2>Whoops!</h2><p>Pages/Templates/Fields structure not valid</p>";
+        }
+
+        $recipes = RecipesLoader::loadPath($this->fullRecipesPath)->recipes;
+
+        if (count($recipes) === 0) return "<h2>Whoops!</h2><p>no recipes found in <strong>{$this->fullRecipesPath}</strong></p>";
+
+        $form = $this->modules->get('InputfieldForm');
+        $form->attr('id', 'pwr-form');
+        $form->attr('action', 'execute/');
+
+        $allWrapper = new InputfieldWrapper();
+        $allWrapper->attr('title', $this->_('All'));
+        $this->buildForm($allWrapper, $recipes);
+        $form->append($allWrapper);
+
+        // $otherWrapper = new InputfieldWrapper();
+        // $otherWrapper->attr('title', $this->_('Some Other'));
+        // $this->buildForm($otherWrapper, $recipes);
+        // $form->append($otherWrapper);
+
+        return $form->render();
+    }
+
+
+
+    protected function buildForm(InputfieldWrapper $wrapper, $recipes) {
+
+        $markup = $this->modules->get('InputfieldMarkup');
+        $markup->label = $this->_('Recipes');
+        $markup->description = $this->_('Recipes');
+
+        $table = $this->modules->get('MarkupAdminDataTable');
+        $table->setEncodeEntities(false);
+        $header = array(
+            '<input type="checkbox" class="toggle-all" checked="checked">',
+            $this->_('Title'),
+            // $this->_('Name'),
+            $this->_('Tags'),
+            $this->_('Author(s)'),
+            $this->_('Version'),
+            $this->_('Installed?'),
+        );
+        $table->headerRow($header);
+
+        foreach ($recipes as $recipe) {
+            $table->row($this->getRecipeTableRow($recipe));
+        }
+
+        $markup->attr('value', $table->render());
+        $wrapper->append($markup);
+
+        $action = $this->modules->get('InputfieldSelect');
+        $action->label = $this->_('Action');
+        $action->description = $this->_('Chose an action for the selected recipes');
+        $action->columnWidth = 50;
+        $action->attr('name+id', 'recipeInstallerAction');
+        $action->addOptions($this->actions);
+        $action->attr('value', "install");
+
+        $wrapper->append($action);
+
+        $button = $this->modules->get('InputfieldSubmit');
+        $button->attr('value', $this->_('Execute'));
+        $button->attr('name', 'a');
+        $wrapper->append($button);
+    }
+
+
+
+    protected function getRecipeTableRow($recipe) {
+
+        $status = $recipe->getStatus();
+        $checkboxEnabledStatus = 'enabled';
+        $checkboxCheckedStatus = 'checked';
+
+        switch (true) {
+            default:
+            case $status === Recipe::STATUS_NOT_INSTALLED:
+                $statusString = 'no';
+                break;
+
+            case $status === Recipe::STATUS_OLDER_VERSION_INSTALLED:
+                $statusString = 'older: ' . $recipe->getInstalledVersion();
+                break;
+
+            case $status === Recipe::STATUS_NEWER_VERSION_INSTALLED:
+                $statusString = 'newer: ' . $recipe->getInstalledVersion();
+                $statusString = "<span class='error'>$statusString</span>";
+                $checkboxEnabledStatus = 'disabled';
+                $checkboxCheckedStatus = '';
+                break;
+
+            case $status === Recipe::STATUS_INSTALLED:
+                $statusString = 'yes';
+                $checkboxCheckedStatus = '';
+                break;
+        }
+
+        $tags = implode(", ", $recipe->tags);
+        $authors = implode(", ", $recipe->authors);
+        $row = array(
+            "<input type='checkbox' name='recipes[]' value='{$recipe->name}' class='toggle' {$checkboxCheckedStatus} {$checkboxEnabledStatus}>",
+            $recipe->title,
+            $tags,
+            $authors,
+            $recipe->version,
+            $statusString,
+        );
+        return $row;
+    }
+
+
+
+    protected function getTemplatesAndFieldErrors() {
+        $rtn = array();
+        foreach ($this->templateStructure as $templateName => $templateSettings) {
+            $fieldNames = $templateSettings['fieldNames'];
+            $template = $this->templates->get($templateName);
+            if (!$template) {
+                $fieldNamesImploded = implode("', '", $fieldNames);
+                $rtn[] = "Required template '$templateName' (with fields: '$fieldNamesImploded') not found.";
+            } else {
+                $fields = $template->fields;
+                $missingFieldNames = array();
+                foreach ($fieldNames as $fieldName) {
+                    if (!$fields->has($fieldName)) {
+                        $missingFieldNames[] = $fieldName;
+                    }
+                }
+
+                if (count($missingFieldNames)) {
+                    $missingFieldNamesImploded = implode("', '", $missingFieldNames);
+                    $rtn[] = "Required fields '$missingFieldNamesImploded' not found in template '$templateName'.";
+                }
+            }
+        }
+        return $rtn;
+    }
+
+
+
+    protected function getPageStructureErrors() {
+        $rtn = array();
+        foreach ($this->templateStructure as $templateName => $templateSettings) {
+            $parent = $templateSettings['parent'];
+            $page = $this->pages->get("$parent, include=all");
+            if (!$page->id) {
+                $rtn[] = "Required page '$parent' not found.";
+            } else {
+                $childTemplates = $page->template->childTemplates;
+                if (count($childTemplates) === 0) continue;
+
+                $childTemplateAllowed = false;
+                foreach ($page->template->childTemplates as $id) {
+                    $childTemplateName = $this->templates->get($id)->name;
+                    if ($childTemplateName === $templateName) {
+                        $childTemplateAllowed = true;
+                    }
+                }
+
+                if (!$childTemplateAllowed) {
+                    $rtn[] = "Template '{$page->template->name}' of '$parent' does not allow '{$templateName}' as a child.";
+                }
+            }
+        }
+        return $rtn;
+    }
+
+
+
+    protected function getErrors() {
+        $errors = array_merge(
+            $this->getTemplatesAndFieldErrors(),
+            $this->getPageStructureErrors()
+        );
+        return count($errors) ? $errors : false;
+    }
+}

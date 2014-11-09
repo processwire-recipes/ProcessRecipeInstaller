@@ -1,0 +1,9 @@
+{
+	"title": "Recipe Installer",
+	"summary": "Recipe Installer",
+	"version": "0.1.0",
+	"author": "owzim",
+	"icon": "file-text",
+	"requires": "ProcessWire>=2.5.7, PHP>=5.4.0",
+    "permission": "page-delete"
+}
