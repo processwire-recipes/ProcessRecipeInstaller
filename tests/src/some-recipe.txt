@@ -1,0 +1,16 @@
+title: Some awesome recipe
+----
+version: 1.2.1
+----
+authors: owzim
+----
+tags: awesome, outstanding, brilliant
+----
+problem:
+MarkDown problem - Duis aute irure.
+----
+solution:
+MarkDown solution - Duis aute irure.
+----
+resources:
+MarkDown resources - Duis aute irure.
