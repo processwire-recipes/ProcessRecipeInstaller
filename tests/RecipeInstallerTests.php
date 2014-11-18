@@ -40,5 +40,22 @@ class RecipeInstallerTests extends \TestFest\TestFestSuite {
         $this->assertIdentical($r->problem, 'MarkDown problem - Duis aute irure.');
         $this->assertIdentical($r->solution, 'MarkDown solution - Duis aute irure.');
         $this->assertIdentical($r->resources, 'MarkDown resources - Duis aute irure.');
+        
+        
+        $this->newTest('Recipe::construct, flaky recipe source');
+
+        $recipeName = 'some-other-recipe';
+        $someRecipe = file_get_contents("{$this->src}/{$recipeName}.txt");
+
+        $r = new \ProcessWireRecipes\Recipe($recipeName, $someRecipe);
+
+        $this->assertIdentical($r->version, '0.0.0');
+
+        $this->assertArray($r->authors);
+        $this->assertIdentical(count($r->authors), 0);
+
+        $this->assertArray($r->tags);
+        $this->assertIdentical(count($r->tags), 0);
+        
     }
 }

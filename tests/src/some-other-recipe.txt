@@ -1,0 +1,10 @@
+title: Some awesome recipe
+----
+problem:
+MarkDown problem - Duis aute irure.
+----
+solution:
+MarkDown solution - Duis aute irure.
+----
+resources:
+MarkDown resources - Duis aute irure.
