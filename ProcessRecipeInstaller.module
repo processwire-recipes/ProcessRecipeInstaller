@@ -148,7 +148,56 @@ class ProcessRecipeInstaller extends Process implements Module {
         $this->session->redirect("../");
     }
 
+    public function ___executePull() {
 
+        $path = $this->fullRecipesPath;
+
+        // create the dir if necessary
+        if (!file_exists($path)) {
+            if(!$success = wireMkdir($path, true)) {
+                $this->session->error("could not create {$path}");
+            }
+        }
+
+
+
+        $repoExists = file_exists("{$path}/.git");
+
+        $isEmpty = count(scandir($path)) === 2; // containing the default: ['.','..']
+
+        if(!($isWritable = is_writable(dirname("$path/WRITE_ACCESS_TEST")))) {
+            $this->session->error("cannot write to {$path}");
+        }
+
+
+        if (!$repoExists && !$isEmpty) {
+            $this->session->error("cannot clone a repo into a non empty directory, {$path}");
+        }
+
+        $output = array();
+
+        switch (true) {
+            case !$repoExists && $isEmpty:
+                exec("git clone {$this->recipesRepo} $path --progress 2>&1", $output);
+                break;
+
+            case $repoExists && $isWritable:
+                exec("cd $path && git pull {$this->recipesRepo} --progress 2>&1", $output);
+                break;
+        }
+
+        foreach ($output as $outputLine) {
+            if (preg_match("/.*(not found|error|fatal|warning).*/i", $outputLine)) {
+                $this->error($outputLine);
+                $this->session->error($outputLine);
+            } else {
+                $this->message($outputLine);
+                $this->session->message($outputLine);
+            }
+        }
+
+        $this->session->redirect("../");
+    }
 
     /**
      * main page
@@ -164,7 +213,24 @@ class ProcessRecipeInstaller extends Process implements Module {
 
         $recipes = RecipesLoader::loadPath($this->fullRecipesPath)->recipes;
 
-        if (count($recipes) === 0) return "<h2>Whoops!</h2><p>no recipes found in <strong>{$this->fullRecipesPath}</strong></p>";
+        $out = array();
+
+        $out[] = '<h2>Recipe Installer</h2>';
+
+        if (count($recipes) === 0) $out[] = "<p>no recipes found in <strong>{$this->fullRecipesPath}</strong></p>";
+
+        $out[] = "<p><a href='pull/' title='pull/clone'>pull/clone </a> from <b>{$this->recipesRepo}</b></p>";
+
+        // $button = $this->modules->get('InputfieldButton');
+        // $button->href = 'pull/';
+        // $button->value = 'Pull/Clone';
+        // $button->icon = 'refresh';
+
+        // $out[] = '<br>';
+        // $out[] = $button->render();
+        // $out[] = "  from <b>{$this->recipesRepo}</b>";
+        // $out[] = '<br>';
+        // $out[] = '<br>';
 
         $form = $this->modules->get('InputfieldForm');
         $form->attr('id', 'pwr-form');
@@ -179,8 +245,10 @@ class ProcessRecipeInstaller extends Process implements Module {
         // $otherWrapper->attr('title', $this->_('Some Other'));
         // $this->buildForm($otherWrapper, $recipes);
         // $form->append($otherWrapper);
+        //
+        $out[] = $form->render();
 
-        return $form->render();
+        return "\n" . implode("\n", $out) . "\n";
     }
 
 

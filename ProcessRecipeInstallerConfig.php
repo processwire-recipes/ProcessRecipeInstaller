@@ -4,7 +4,8 @@ class ProcessRecipeInstallerConfig extends ModuleConfig {
 
     public function getDefaults() {
         return array(
-            'recipesPath' => 'recipe-txt-files',
+            'recipesPath' => 'assets/recipes',
+            'recipesRepo' => 'https://github.com/processwire-recipes/Recipes.git',
             'recipesParent' => '/recipes/',
             'tagsParent' => '/recipe-tags/',
             'authorsParent' => '/recipe-authors/',
@@ -20,8 +21,17 @@ class ProcessRecipeInstallerConfig extends ModuleConfig {
                 'description' => 'relative to the site directory',
                 'type' => 'text',
                 'required' => true,
-                'columnWidth' => 100,
+                'columnWidth' => 33,
                 'value' => $defaults['recipesPath'],
+            ),
+            array(
+                'name' => 'recipesRepo',
+                'label' => 'Recipes Repo',
+                'description' => 'URL to Git repository, where version controlled text files reside',
+                'type' => 'text',
+                'required' => true,
+                'columnWidth' => 67,
+                'value' => $defaults['recipesRepo'],
             ),
             array(
                 'name' => 'recipesParent',
