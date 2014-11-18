@@ -5,7 +5,7 @@
     "author": "owzim",
     "icon": "file-text",
     "requires": "ProcessWire>=2.5.7, PHP>=5.4.0",
-    "permission": "page-delete",
+    "permission": "recipe-installer",
     "tests": {
     	"title": "Recipe Installer",
     	"classPath": "./tests/RecipeInstallerTests.php"

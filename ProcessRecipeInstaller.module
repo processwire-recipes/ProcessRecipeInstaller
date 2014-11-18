@@ -11,6 +11,9 @@ class ProcessRecipeInstaller extends Process implements Module {
     const PAGE_NAME = 'recipe-installer';
     const PAGE_TITLE = 'Recipe Installer';
 
+    const PERMISSION_NAME = 'recipe-installer';
+    const PERMISSION_TITLE = 'Install and uninstall Recipes';
+
     const ACTION_NAME_INSTALL = 'install';
     const ACTION_NAME_UNINSTALL = 'uninstall';
 
@@ -78,6 +81,14 @@ class ProcessRecipeInstaller extends Process implements Module {
             $page->process = $this;
             $page->save();
         }
+
+        $permission = $this->permissions->get(self::PERMISSION_NAME);
+        if (!$permission->id) {
+            $p = new Permission();
+            $p->name = self::PERMISSION_NAME;
+            $p->title = $this->_(self::PERMISSION_TITLE);
+            $p->save();
+        }
     }
 
 
@@ -86,6 +97,8 @@ class ProcessRecipeInstaller extends Process implements Module {
         parent::___uninstall();
         $page = $this->pages->get('template=admin, name=' . self::PAGE_NAME);
         if ($page->id) $page->delete();
+        $permission = $this->permissions->get(self::PERMISSION_NAME);
+        if ($permission->id) $permission->delete();
     }
 
 
