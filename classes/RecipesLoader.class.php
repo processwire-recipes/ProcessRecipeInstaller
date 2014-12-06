@@ -3,11 +3,11 @@
 namespace ProcessWireRecipes;
 
 class RecipesLoader {
-    
-    const FILE_NAME_PATTERN = "/([a-z\-]+\.txt)/";
-    
+
+    const FILE_NAME_PATTERN = "/(^[a-z\-]+\.(?:txt|md)$)/";
+
     protected static $instance;
-    
+
     protected $paths = array();
     public $recipes = array();
 
@@ -19,7 +19,7 @@ class RecipesLoader {
         $instance->getRecipes();
         return $instance;
     }
-    
+
     protected function addPaths($paths) {
         if (is_string($paths)) {
             $this->addPath($paths);
@@ -32,13 +32,13 @@ class RecipesLoader {
         }
         return $this;
     }
-    
+
     protected function addPath($path) {
         if (!in_array($path, $this->paths)) {
             $this->paths[] = $path;
         }
     }
-    
+
 
     public function getRecipes() {
 
@@ -46,9 +46,10 @@ class RecipesLoader {
             if (!file_exists($path)) continue;
             $files = scandir($path);
             foreach ($files as $file) {
-                
+
                 if (preg_match(self::FILE_NAME_PATTERN, $file)) {
                     $name = str_replace('.txt', '', $file);
+                    $name = str_replace('.md', '', $name);
                     $str = file_get_contents("{$path}/{$file}");
                     $this->recipes[$name] = new Recipe($name, $str);
                 }
