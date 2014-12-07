@@ -57,7 +57,7 @@ class Recipe extends \WireData {
         $this->raw = str_replace("\xEF\xBB\xBF", '', $raw);
 
         // explode all fields by the line separator
-        $fields = explode("\n----", $this->raw);
+        $fields = preg_split("/\\n----+/", $this->raw);
 
         // loop through all fields and add them to the content
         foreach($fields as $field) {
