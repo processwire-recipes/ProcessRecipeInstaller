@@ -4,7 +4,8 @@ namespace ProcessWireRecipes;
 
 class RecipesLoader {
 
-    const FILE_NAME_PATTERN = "/(^[a-z\-]+\.(?:txt|md)$)/";
+    // https://regex101.com/r/h3kqny/1
+    const FILE_NAME_PATTERN = "/(^[a-z0-9\-]+\.(?:txt|md)$)/";
 
     protected static $instance;
 

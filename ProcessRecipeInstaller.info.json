@@ -1,7 +1,7 @@
 {
     "title": "Recipe Installer",
     "summary": "Recipe Installer",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "author": "owzim",
     "icon": "file-text",
     "requires": "ProcessWire>=2.5.7, PHP>=5.4.0",
